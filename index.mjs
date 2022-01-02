@@ -31,9 +31,17 @@ busboy.extend(app, {
   ]
 })
 
+// Routes that don't require authentication
 // USER
 app.post('/user/register', usercontroller.create.bind(usercontroller))
 app.post('/user/login', usercontroller.login.bind(usercontroller))
+
+/**
+ * app.use(authenticationMiddleware)
+ */
+
+// Routes that require authentication
+// USER
 app.get('/user/:id', usercontroller.read.bind(usercontroller))
 app.get('/deleteuser/:id', usercontroller.delete.bind(usercontroller))
 
