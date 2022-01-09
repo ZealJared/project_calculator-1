@@ -9,7 +9,7 @@
 
 <!-- Create New Material is here ONLY SHOW WHEN NOT UPDATING MATERIAL -->
 <!-- Create Line item when material is created -->
- <div class="card">
+ <div class="card" v-if="!showEditMaterialForm">
     <div class="card-body">
       <form enctype="application/x-www-form-urlencoded" @submit.prevent="createMaterial">
       <div class="row  align-items-center">
@@ -41,7 +41,7 @@
 
 <!-- Update New Material is here ONLY SHOW WHEN CLICK EDIT MATERIAL -->
 <!-- Update Material only -->
- <div class="card">
+ <div class="card" v-if="showEditMaterialForm">
     <div class="card-body">
       
       <form enctype="application/x-www-form-urlencoded" @submit.prevent="updateMaterial">
@@ -80,10 +80,10 @@
             <h5>Project Info:</h5>
         </div>
         <div class="col">
-            Total Project Cost:
+            Total Project Cost: {{ totalProjectCost() }}
         </div>
         <div class="col">
-            Number of Items:
+            Number of Items: {{ lineItems.length }}
         </div>
     </div>
 </div>
@@ -98,32 +98,32 @@
 
 <!-- Line Item -->
 <!-- Update line Item without clicking submit, just have it saved automatically -->
-<div class="border rounded p-3">
+<div class="border rounded p-3" :key="index" v-for="(lineItem, index) in lineItems">
     <!-- TOP ROW -->
         <div class="row  align-items-center mb-2">
             <!-- NAME -->
             <div class="col">
-                material.name
+                {{getMaterial(lineItem.material).name}}
             </div>
 
             <!-- URL -->
             <div class="col">
-                material.url
+                {{getMaterial(lineItem.material).url}}
             </div>
 
             <!-- DESCRIPTION -->
             <div class="col">
-                material.description
+                {{getMaterial(lineItem.material).description}}
             </div>
 
             <!-- EDIT MATERIAL -->
             <div class="col text-end">
-                <button type="submit" class="btn btn-primary">Edit Material</button>
+                <button @click="beginMaterialEdit" type="submit" class="btn btn-primary">Edit Material</button>
             </div>
 
             <!-- DELETE MATERIAL -->
             <div class="col">
-                <button type="submit" class="btn btn-danger">Delete Material</button>
+                <button type="submit" class="btn btn-danger" @click="deleteMaterial(index)">Delete Material</button>
             </div>
         </div>
         <!-- BOTTOM ROW -->
@@ -131,27 +131,27 @@
 
             <!-- NOTES -->
             <div class="col">
-                <input type="text" class="form-control" id="notes" name="notes" placeholder="Notes" value="lineItem.notes" />
+                <input type="text" class="form-control" id="notes" name="notes" placeholder="Notes" v-model="lineItem.notes" />
             </div>
             
             <!-- PRICE -->
             <div class="col">
-                material.price
+                {{getMaterial(lineItem.material).price}}
             </div>
 
             <!-- QUANTITY -->
             <div class="col">
-                <input type="number" class="form-control" min=".01" step="0.01" id="quantity" name="quantity" placeholder="1.00" value="lineItem.quantity" />
+                <input type="number" class="form-control" min="0" step="1" id="quantity" name="quantity" placeholder="quantity" v-model="lineItem.quantity" />
             </div>
 
             <!-- TOTAL -->
             <div class="col">
-                $Total
+                {{ financialFormat(lineItem.quantity * getMaterial(lineItem.material).price) }}
             </div>
 
             <!-- DUPLICATE LINE ITEM -->
             <div class="col">
-                <button type="submit" class="btn btn-success">Duplicate Item</button>
+                <button @click="duplicateLineItem(index)" type="submit" class="btn btn-success">Duplicate Item</button>
             </div>
         </div>
         </div>
@@ -171,14 +171,64 @@ export default {
         const projectId = route.params.id
         console.log(projectId)
         const apiClient = inject('$api', {})
-        const project = ref([])
+        const project = ref({})
         const getProject = async () => {
-        project.value = await apiClient.getProject(projectId)
+            project.value = await apiClient.getProject(projectId)
+        }
+        const showEditMaterialForm = ref(false)
+        const beginMaterialEdit = () => {
+            showEditMaterialForm.value = true
+        }
+        const updateMaterial = () => {
+            // some API call here
+            // if call successful, then:
+            showEditMaterialForm.value = false
+        }
+        const materials = ref([])
+        const createMaterial = () => {
+            // some API call
+            // if material is returned, then:
+            const material = { name: 'name', user_id: 1, url: 'url', price: 12, description: 'description' }
+            const materialCount = materials.value.push(material)
+            lineItems.value.push({ notes: 'notes', quantity: 1, material: materialCount-1 })
+        }
+        const deleteMaterial = (materialIndex) => {
+            lineItems.value.splice(materialIndex, 1)
+        }
+        const lineItems = ref([])
+        const getMaterial = (index) => {
+            return materials.value[index]
+        }
+        const duplicateLineItem = (index) => {
+            const itemToDuplicate = { ...lineItems.value[index] }
+            lineItems.value.push(itemToDuplicate)
+        }
+        const financialFormat = (number) => {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(number)
+        }
+        const totalProjectCost = () => {
+            let totalCost = 0
+            for (const lineItem of lineItems.value) {
+                const material = getMaterial(lineItem.material)
+                totalCost += (lineItem.quantity * material.price)
+            }
+            return financialFormat(totalCost)
         }
         onMounted(getProject)
         return {
             project,
+            showEditMaterialForm,
+            updateMaterial,
+            beginMaterialEdit,
+            materials,
+            createMaterial,
+            deleteMaterial,
+            lineItems,
+            getMaterial,
+            duplicateLineItem,
+            financialFormat,
+            totalProjectCost
         }
-}
+    }
 }
 </script>
